@@ -8,6 +8,7 @@ from selenium.common.exceptions import ElementClickInterceptedException, Timeout
 import time
 import csv
 import os
+import traceback
 
 # Pfad zur CSV-Datei
 CSV_FILE_PATH = 'example_menu_data.csv' 
@@ -65,36 +66,60 @@ def filter_dishes_by_category(all_dishes, target_category_name):
     return filtered
 
 def main():
-    print("Starte den Uploader für das Admin Panel...") 
+    print("Starte den Uploader für das Admin Panel...")
     print("Stelle sicher, dass Chrome mit --remote-debugging-port=9222 gestartet wurde,")
-    print("du in deinem Admin Panel eingeloggt und auf der richtigen Menü-Seite bist,") 
+    print("du in deinem Admin Panel eingeloggt und auf der richtigen Menü-Seite bist,")
     print("und die korrekte Kategorie für den Upload bereits ausgewählt ist.\n")
 
     all_dishes_from_csv = read_dishes_from_csv(CSV_FILE_PATH)
     if not all_dishes_from_csv:
+        input("CSV-Datei nicht gefunden oder leer. Drücke ENTER zum Beenden.\n")
         return
 
-    target_category = input("Gib den genauen Namen der Kategorie ein, die du gerade in deinem Admin Panel geöffnet hast (Groß-/Kleinschreibung beachten, wie in der CSV):\n> ") 
+    target_category = input("Gib den genauen Namen der Kategorie ein, die du gerade in deinem Admin Panel geöffnet hast (Groß-/Kleinschreibung beachten, wie in der CSV):\n> ")
     if not target_category:
         print("Keine Kategorie eingegeben. Skript wird beendet.")
+        input("Drücke ENTER zum Beenden.\n")
         return
 
     dishes_to_upload = filter_dishes_by_category(all_dishes_from_csv, target_category)
     if not dishes_to_upload:
         print(f"Keine Gerichte für die Kategorie '{target_category}' in der CSV gefunden oder die Kategorie existiert nicht in der CSV.")
+        input("Drücke ENTER zum Beenden.\n")
         return
 
     print(f"Bereite den Upload von {len(dishes_to_upload)} Gerichten für die Kategorie '{target_category}' vor...")
     
-    chrome_options = Options()
-    chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
-    
-    driver = webdriver.Chrome(options=chrome_options)
-    wait = WebDriverWait(driver, 10) # Timeout für explizite Waits (kann bei langsamen Seiten erhöht werden)
+    driver = None
+    try:
+        chrome_options = Options()
+        chrome_options.add_experimental_option("debuggerAddress", "127.0.0.1:9222")
+        
+        print("\nVersuche, mit dem Chrome-Browser auf Port 9222 zu verbinden...")
+        driver = webdriver.Chrome(options=chrome_options)
+        
+        wait = WebDriverWait(driver, 10)
+        print("Erfolgreich mit dem laufenden Chrome-Browser verbunden.")
 
-    print("Erfolgreich mit dem laufenden Chrome-Browser verbunden.")
+    except Exception as e:
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print(f"FEHLER BEI DER VERBINDUNG ZUM BROWSER oder bei der WebDriver-Initialisierung:")
+        print(str(e))
+        print("Traceback (weitere Details):")
+        traceback.print_exc()
+        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        print("Bitte stelle sicher, dass Chrome MANUELL mit dem korrekten Remote Debugging Port gestartet wurde.")
+        print("Beispiel für macOS: \"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome\" --remote-debugging-port=9222")
+        print("Beispiel für Windows: \"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" --remote-debugging-port=9222")
+        print("Das Skript kann nicht fortfahren, wenn die Verbindung fehlschlägt.")
+        input("\nDrücke ENTER, um das Skript zu beenden.")
+        return
+
     print(f"Beginne mit dem Eintragen der Gerichte in {MEDIUM_WAIT} Sekunden...")
     time.sleep(MEDIUM_WAIT)
+
+    successful_uploads = 0
+    failed_uploads = 0
 
     for i, dish in enumerate(dishes_to_upload):
         print(f"\nVerarbeite Gericht {i+1}/{len(dishes_to_upload)}: {dish['Name']}")
@@ -170,6 +195,7 @@ def main():
             time.sleep(LONG_WAIT)
 
             print(f"  Gericht '{dish['Name']}' erfolgreich eingetragen (hoffentlich).")
+            successful_uploads += 1
 
         except Exception as e:
             print(f"!! FEHLER beim Verarbeiten von Gericht '{dish['Name']}': {e}")
@@ -182,9 +208,13 @@ def main():
             # driver.save_screenshot(f'error_screenshot_{timestamp}_{dish["Name"][:20]}.png')
             # print(f"    Screenshot gespeichert: error_screenshot_{timestamp}_{dish["Name"][:20]}.png")
             time.sleep(MEDIUM_WAIT) # Längere Pause nach einem Fehler, um manuell einzugreifen
+            failed_uploads += 1
             continue
 
     print("\nAlle ausgewählten Gerichte wurden verarbeitet.")
+    print(f"Erfolgreiche Uploads: {successful_uploads}")
+    print(f"Fehlgeschlagene Uploads: {failed_uploads}")
+    input("\nDrücke ENTER, um das Skript zu beenden und das Terminalfenster offen zu halten...")
 
 if __name__ == '__main__':
     main() 
