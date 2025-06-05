@@ -105,8 +105,8 @@ Dieses Skript verwendet Selenium, um sich mit einer bestehenden Chrome-Browsersi
       ```
     - **Linux:**
       `bash
-google-chrome --remote-debugging-port=9222
-`
+    google-chrome --remote-debugging-port=9222
+    `
       Ein neues Chrome-Fenster öffnet sich. **Lasse dieses Terminalfenster und den Chrome-Browser während der Ausführung des Skripts geöffnet.**
 
 2.  **Manuelle Vorbereitung im Browser:**
